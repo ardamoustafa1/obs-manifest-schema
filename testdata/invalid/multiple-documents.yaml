@@ -1,0 +1,10 @@
+apiVersion: obs.acme.com/v1
+kind: ServiceObservability
+metadata:
+  name: first-document
+---
+apiVersion: obs.acme.com/v1
+kind: ServiceObservability
+metadata:
+  name: second-document
+

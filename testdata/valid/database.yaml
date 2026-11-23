@@ -1,0 +1,32 @@
+apiVersion: obs.acme.com/v1
+kind: ServiceObservability
+metadata:
+  name: customer-postgres
+  owner: team-data-platform
+  slack_channel: "#data-platform-alerts"
+  pagerduty_service: customer-database-production
+spec:
+  serviceType: database
+  environment: prod
+  slo:
+    availability_target: 0.9999
+    latency_target_ms: 100
+    latency_percentile: 99
+  goldenSignals:
+    trafficMetric: database_client_operations_total
+    errorMetric: database_client_errors_total
+    latencyMetric: database_client_operation_duration_seconds
+    saturationMetrics:
+      - database_connections_usage_ratio
+      - database_storage_used_bytes
+  dashboards:
+    template: golden-signals/database-v1
+  alerting:
+    burnRateAlerts: true
+    extraRules:
+      - name: DatabaseConnectionsNearLimit
+        expr: database_connections_usage_ratio > 0.85
+        for: 10m
+        severity: warning
+        summary: Database connection pool is approaching its limit
+

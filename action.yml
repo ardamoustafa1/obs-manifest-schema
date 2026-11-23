@@ -1,0 +1,43 @@
+name: obs-manifest-lint
+description: Validate a ServiceObservability observability.yaml contract with obsctl.
+author: Platform Engineering
+
+branding:
+  icon: activity
+  color: blue
+
+inputs:
+  path:
+    description: Path to the ServiceObservability YAML file in the caller repository.
+    required: false
+    default: observability.yaml
+  warnings-as-errors:
+    description: Fail when naming-convention or deprecation warnings are present.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: "1.24.x"
+        cache: true
+        cache-dependency-path: ${{ github.action_path }}/go.sum
+    - name: Build obsctl
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_ACTION_REF:-local}" -o "$RUNNER_TEMP/obsctl" ./cmd/obsctl
+    - name: Validate observability manifest
+      shell: bash
+      env:
+        OBS_MANIFEST_PATH: ${{ inputs.path }}
+        OBS_WARNINGS_AS_ERRORS: ${{ inputs.warnings-as-errors }}
+      run: |
+        args=(validate)
+        if [[ "$OBS_WARNINGS_AS_ERRORS" == "true" ]]; then
+          args+=(--warnings-as-errors)
+        fi
+        "$RUNNER_TEMP/obsctl" "${args[@]}" "$OBS_MANIFEST_PATH"
+

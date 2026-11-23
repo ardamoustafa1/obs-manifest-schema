@@ -1,0 +1,32 @@
+apiVersion: obs.acme.com/v1
+kind: ServiceObservability
+metadata:
+  name: nightly-ledger-export
+  owner: team-finance-platform
+  slack_channel: "#finance-platform-alerts"
+  pagerduty_service: finance-batch-production
+spec:
+  serviceType: batch
+  environment: prod
+  slo:
+    availability_target: 0.99
+    latency_target_ms: 3600000
+    latency_percentile: 90
+  goldenSignals:
+    trafficMetric: ledger_export_runs_total
+    errorMetric: ledger_export_failures_total
+    processingDurationMetric: ledger_export_duration_seconds
+    saturationMetrics:
+      - ledger_export_pending_partitions_count
+      - ledger_export_buffer_bytes
+  dashboards:
+    template: golden-signals/batch-v1
+  alerting:
+    burnRateAlerts: true
+    extraRules:
+      - name: LedgerExportMissed
+        expr: time() - ledger_export_last_success_seconds > 90000
+        for: 5m
+        severity: critical
+        summary: Nightly ledger export has missed its completion window
+

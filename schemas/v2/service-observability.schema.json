@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.obs.acme.com/service-observability/v2/schema.json",
+  "x-schema-version": "2.0.0",
+  "title": "ServiceObservability v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "obs.acme.com/v2"},
+    "kind": {"const": "ServiceObservability"},
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 2, "maxLength": 63, "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"}
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serviceType", "environment", "slo", "goldenSignals", "dashboards", "alerting", "ownership"],
+      "properties": {
+        "serviceType": {"enum": ["http", "grpc", "worker", "batch", "database"]},
+        "environment": {"enum": ["dev", "staging", "prod"]},
+        "slo": {"$ref": "https://schemas.obs.acme.com/service-observability/v1/schema.json#/$defs/slo"},
+        "goldenSignals": {"$ref": "https://schemas.obs.acme.com/service-observability/v1/schema.json#/$defs/goldenSignals"},
+        "dashboards": {"$ref": "https://schemas.obs.acme.com/service-observability/v1/schema.json#/$defs/dashboards"},
+        "alerting": {"$ref": "https://schemas.obs.acme.com/service-observability/v1/schema.json#/$defs/alerting"},
+        "ownership": {"$ref": "#/$defs/ownership"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"serviceType": {"enum": ["worker", "batch"]}}, "required": ["serviceType"]},
+          "then": {"properties": {"goldenSignals": {"required": ["processingDurationMetric"], "not": {"required": ["latencyMetric"]}}}},
+          "else": {"properties": {"goldenSignals": {"required": ["latencyMetric"], "not": {"required": ["processingDurationMetric"]}}}}
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team", "slackChannel", "pagerDutyService"],
+      "properties": {
+        "team": {"type": "string", "minLength": 2, "maxLength": 100, "pattern": "^[a-z0-9][a-z0-9._/-]*$"},
+        "slackChannel": {"type": "string", "pattern": "^#[a-z0-9_-]+$"},
+        "pagerDutyService": {"type": "string", "minLength": 2, "maxLength": 100}
+      }
+    }
+  }
+}

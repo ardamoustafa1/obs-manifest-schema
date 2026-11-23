@@ -1,0 +1,22 @@
+apiVersion: obs.acme.com/v1
+kind: ServiceObservability
+metadata:
+  name: bad-worker
+  owner: team-platform
+  slack_channel: "#platform-alerts"
+  pagerduty_service: platform-production
+spec:
+  serviceType: worker
+  environment: prod
+  slo:
+    availability_target: 0.99
+    latency_target_ms: 5000
+    latency_percentile: 95
+  goldenSignals:
+    trafficMetric: jobs_processed_total
+    errorMetric: jobs_failed_total
+    latencyMetric: job_latency_seconds
+    saturationMetrics: [queue_depth_count]
+  dashboards: {template: golden-signals/worker-v1}
+  alerting: {burnRateAlerts: true, extraRules: []}
+

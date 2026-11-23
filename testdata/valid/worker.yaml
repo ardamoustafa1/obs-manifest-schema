@@ -1,0 +1,32 @@
+apiVersion: obs.acme.com/v1
+kind: ServiceObservability
+metadata:
+  name: invoice-worker
+  owner: team-billing
+  slack_channel: "#billing-alerts"
+  pagerduty_service: billing-production
+spec:
+  serviceType: worker
+  environment: prod
+  slo:
+    availability_target: 0.995
+    latency_target_ms: 30000
+    latency_percentile: 95
+  goldenSignals:
+    trafficMetric: invoice_jobs_processed_total
+    errorMetric: invoice_jobs_failed_total
+    processingDurationMetric: invoice_job_processing_duration_seconds
+    saturationMetrics:
+      - invoice_queue_depth_count
+      - process_resident_memory_bytes
+  dashboards:
+    template: golden-signals/worker-v1
+  alerting:
+    burnRateAlerts: true
+    extraRules:
+      - name: InvoiceQueueStalled
+        expr: rate(invoice_jobs_processed_total[10m]) == 0 and invoice_queue_depth_count > 0
+        for: 10m
+        severity: critical
+        summary: Invoice queue has work but no successful processing
+

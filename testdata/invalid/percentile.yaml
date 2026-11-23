@@ -1,0 +1,22 @@
+apiVersion: obs.acme.com/v1
+kind: ServiceObservability
+metadata:
+  name: bad-percentile-api
+  owner: team-platform
+  slack_channel: "#platform-alerts"
+  pagerduty_service: platform-production
+spec:
+  serviceType: http
+  environment: prod
+  slo:
+    availability_target: 0.999
+    latency_target_ms: 250
+    latency_percentile: 97
+  goldenSignals:
+    trafficMetric: http_server_requests_total
+    errorMetric: http_server_errors_total
+    latencyMetric: http_server_duration_seconds
+    saturationMetrics: [process_resident_memory_bytes]
+  dashboards: {template: golden-signals/http-v1}
+  alerting: {burnRateAlerts: true, extraRules: []}
+

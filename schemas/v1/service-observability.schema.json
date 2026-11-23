@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.obs.acme.com/service-observability/v1/schema.json",
+  "x-schema-version": "1.0.0",
+  "title": "ServiceObservability v1",
+  "description": "Declarative observability contract owned by a service team.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "obs.acme.com/v1"},
+    "kind": {"const": "ServiceObservability"},
+    "metadata": {"$ref": "#/$defs/metadata"},
+    "spec": {"$ref": "#/$defs/spec"}
+  },
+  "$defs": {
+    "metricName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 255,
+      "pattern": "^[a-z_:][a-z0-9_:]*$"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "owner", "slack_channel", "pagerduty_service"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 63,
+          "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+        },
+        "slack_channel": {
+          "type": "string",
+          "pattern": "^#[a-z0-9_-]+$"
+        },
+        "pagerduty_service": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serviceType", "environment", "slo", "goldenSignals", "dashboards", "alerting"],
+      "properties": {
+        "serviceType": {"enum": ["http", "grpc", "worker", "batch", "database"]},
+        "environment": {"enum": ["dev", "staging", "prod"]},
+        "slo": {"$ref": "#/$defs/slo"},
+        "goldenSignals": {"$ref": "#/$defs/goldenSignals"},
+        "dashboards": {"$ref": "#/$defs/dashboards"},
+        "alerting": {"$ref": "#/$defs/alerting"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"serviceType": {"enum": ["worker", "batch"]}}, "required": ["serviceType"]},
+          "then": {
+            "properties": {
+              "goldenSignals": {
+                "required": ["processingDurationMetric"],
+                "not": {"required": ["latencyMetric"]}
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "goldenSignals": {
+                "required": ["latencyMetric"],
+                "not": {"required": ["processingDurationMetric"]}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "slo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability_target", "latency_target_ms", "latency_percentile"],
+      "properties": {
+        "availability_target": {"type": "number", "minimum": 0.9, "maximum": 0.99999},
+        "latency_target_ms": {"type": "integer", "minimum": 1, "maximum": 86400000},
+        "latency_percentile": {"type": "integer", "minimum": 1, "maximum": 99}
+      }
+    },
+    "goldenSignals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trafficMetric", "errorMetric", "saturationMetrics"],
+      "properties": {
+        "trafficMetric": {"$ref": "#/$defs/metricName"},
+        "errorMetric": {"$ref": "#/$defs/metricName"},
+        "latencyMetric": {"$ref": "#/$defs/metricName"},
+        "processingDurationMetric": {"$ref": "#/$defs/metricName"},
+        "saturationMetrics": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/metricName"}
+        }
+      }
+    },
+    "dashboards": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template"],
+      "properties": {
+        "template": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+        }
+      }
+    },
+    "alerting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["burnRateAlerts", "extraRules"],
+      "properties": {
+        "burnRateAlerts": {"type": "boolean"},
+        "extraRules": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {"$ref": "#/$defs/alertRule"}
+        }
+      }
+    },
+    "alertRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "expr", "for", "severity", "summary"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$", "maxLength": 100},
+        "expr": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "for": {"type": "string", "pattern": "^(?:[0-9]+(?:ms|s|m|h|d))+$"},
+        "severity": {"enum": ["info", "warning", "critical"]},
+        "summary": {"type": "string", "minLength": 3, "maxLength": 256}
+      }
+    }
+  }
+}
+
